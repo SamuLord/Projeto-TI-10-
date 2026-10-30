@@ -1,0 +1,94 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>QEE • Supervisório de Proteção</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<style>
+:root{--bg:#0b1220;--panel:#121c2e;--panel2:#17243a;--line:#293952;--text:#e8effb;--muted:#8fa2bd;--green:#28d7a0;--red:#ff5e70;--amber:#ffbf5b;--blue:#66a9ff}
+*{box-sizing:border-box}body{margin:0;background:radial-gradient(ellipse at top,#14243c,#0b1220 60%);color:var(--text);font:14px/1.5 Inter,system-ui,Segoe UI,sans-serif}
+header{display:flex;align-items:center;justify-content:space-between;padding:22px 4vw;border-bottom:1px solid var(--line);gap:16px;flex-wrap:wrap}
+.brand{font-size:19px;font-weight:800;letter-spacing:.04em}.brand span{color:var(--green)}.muted{color:var(--muted)}.status-pill{border:1px solid var(--line);padding:7px 12px;border-radius:99px;color:var(--amber)}
+nav{display:flex;gap:8px;padding:16px 4vw;flex-wrap:wrap}button,select{font:inherit;color:var(--text);background:#1a2940;border:1px solid #344761;border-radius:10px;padding:10px 13px;cursor:pointer}button:hover{border-color:var(--blue)}button.primary{background:#0d745e;border-color:#159d80}button.danger{background:#642839;border-color:#a84054}
+main{padding:0 4vw 36px;max-width:1600px;margin:auto}.page{display:none}.page.active{display:block}.grid{display:grid;grid-template-columns:repeat(12,1fr);gap:16px}.panel{background:linear-gradient(145deg,#142138,#101a2b);border:1px solid var(--line);border-radius:16px;padding:18px;min-width:0}.span-12{grid-column:span 12}.span-8{grid-column:span 8}.span-6{grid-column:span 6}.span-4{grid-column:span 4}.span-3{grid-column:span 3}
+h2{font-size:18px;margin:0 0 14px}h3{font-size:14px;color:var(--muted);font-weight:600;margin:0 0 8px}.metric{font-size:28px;font-weight:800;letter-spacing:-.04em}.metric small{font-size:12px;color:var(--muted);letter-spacing:0}.kpi{display:flex;justify-content:space-between;align-items:center;gap:8px}.dot{width:9px;height:9px;border-radius:50%;display:inline-block;margin-right:7px;background:var(--amber)}.dot.good{background:var(--green)}.dot.bad{background:var(--red)}
+svg{width:100%;height:auto;display:block}.wire{stroke:#52657f;stroke-width:5;fill:none;stroke-linecap:round}.wire.live{stroke:var(--green);filter:drop-shadow(0 0 4px #28d7a077)}.relay rect{fill:#263750;stroke:#52657f;stroke-width:2}.relay text{fill:#e8effb;font-size:14px;font-weight:700;text-anchor:middle}.relay.on rect{fill:#075b4c;stroke:var(--green)}.relay.off rect{fill:#572534;stroke:var(--red)}.home{fill:#263750;stroke:#52657f;stroke-width:2}.home.lit{fill:#075b4c;stroke:var(--green);filter:drop-shadow(0 0 5px #28d7a066)}.home-label{fill:#dce8fa;font-size:12px;text-anchor:middle}
+.controls{display:flex;gap:9px;flex-wrap:wrap;align-items:center}.form-row{display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin:12px 0}.form-row label{color:var(--muted)}.form-row select{min-width:140px}.table-wrap{overflow:auto}table{width:100%;border-collapse:collapse}th,td{text-align:left;border-bottom:1px solid var(--line);padding:10px 8px;white-space:nowrap}th{color:var(--muted);font-weight:600}.small{font-size:12px}.notice{color:var(--amber);background:#4a371a55;border:1px solid #8b692f;border-radius:10px;padding:12px;margin-top:12px}
+@media(max-width:900px){.span-8,.span-6,.span-4,.span-3{grid-column:span 12}.metric{font-size:24px}}
+</style>
+</head>
+<body>
+<header><div><div class="brand">GRID<span>GUARD</span> <span style="color:var(--muted);font-weight:500">/ QEE LAB</span></div><div class="muted small">Supervisório didático de proteção e qualidade de energia</div></div><div class="status-pill" id="connection">● Aguardando ESP32</div></header>
+<nav><button onclick="showPage('overview')">Visão geral</button><button onclick="showPage('faults')">Simular falha</button><button onclick="showPage('reports')">Histórico e relatórios</button></nav>
+<main>
+<section id="overview" class="page active">
+<div class="grid">
+<div class="panel span-3"><h3>Estado do sistema</h3><div class="metric" id="systemState">—</div><div class="muted small">Última atualização: <span id="updated">—</span></div></div>
+<div class="panel span-3"><h3>Interrupções registradas</h3><div class="metric" id="interruptions">0</div><div class="muted small">Últimas 24 horas</div></div>
+<div class="panel span-3"><h3>DRP didático</h3><div class="metric" id="drp">— <small>%</small></div><div class="muted small">Transgressão precária</div></div>
+<div class="panel span-3"><h3>DRC didático</h3><div class="metric" id="drc">— <small>%</small></div><div class="muted small">Transgressão crítica</div></div>
+<div class="panel span-8"><h2>Diagrama unifilar • Proteção da rede</h2>
+<svg viewBox="0 0 800 330" role="img" aria-label="Diagrama unifilar das redes protegidas">
+<text x="40" y="32" fill="#8fa2bd" font-size="13">FONTE / ENTRADA</text><circle cx="75" cy="82" r="25" fill="#1a2940" stroke="#66a9ff" stroke-width="2"/><text x="75" y="87" text-anchor="middle" fill="#e8effb" font-weight="700">CA</text>
+<path id="wire0" class="wire live" d="M100 82 H170"/>
+<g id="svgR1" class="relay on"><rect x="170" y="57" width="90" height="50" rx="9"/><text x="215" y="78">R1</text><text id="r1txt" x="215" y="95" style="font-size:10px">FECHADO</text></g>
+<path id="wire1" class="wire live" d="M260 82 H345 V145 H420"/><path id="wire2" class="wire live" d="M345 82 V250 H420"/>
+<g id="svgR2" class="relay on"><rect x="420" y="120" width="90" height="50" rx="9"/><text x="465" y="141">R2</text><text id="r2txt" x="465" y="158" style="font-size:10px">FECHADO</text></g>
+<g id="svgR3" class="relay on"><rect x="420" y="225" width="90" height="50" rx="9"/><text x="465" y="246">R3</text><text id="r3txt" x="465" y="263" style="font-size:10px">FECHADO</text></g>
+<path id="wire3" class="wire live" d="M510 145 H610"/><path id="wire4" class="wire live" d="M510 250 H610"/>
+<g id="houses2"><path class="home lit" d="M630 135 l28 -23 28 23 v35 h-56z"/><rect class="home lit" x="643" y="146" width="12" height="24"/><rect class="home lit" x="663" y="141" width="12" height="12"/></g>
+<g id="houses3"><path class="home lit" d="M630 240 l28 -23 28 23 v35 h-56z"/><rect class="home lit" x="643" y="251" width="12" height="24"/><rect class="home lit" x="663" y="246" width="12" height="12"/></g>
+<text class="home-label" x="658" y="190">Sub-rede 2</text><text class="home-label" x="658" y="295">Sub-rede 3</text>
+<text x="170" y="130" fill="#8fa2bd" font-size="11">Proteção geral</text><text x="420" y="190" fill="#8fa2bd" font-size="11">Ramais protegidos</text>
+</svg>
+<div class="controls"><button class="primary" onclick="send({cmd:'restore_all'})">Religar rede / resetar</button><button onclick="send({cmd:'reset_fail_injection'})">Limpar falhas injetadas</button></div>
+</div>
+<div class="panel span-4"><h2>Estado dos relés</h2><div id="relayList">Aguardando telemetria…</div><div class="notice small">Verde = fechado/energizado; vermelho = aberto/interrompido. A tela reflete o último estado recebido do ESP32.</div></div>
+<div class="panel span-12"><h2>Osciloscópio • Tensão amostrada</h2><div class="muted small">Forma de onda didática recebida do ADC. A escala depende do condicionador e da calibração configurada no firmware.</div><canvas id="waveChart" height="100"></canvas></div>
+</div>
+</section>
+<section id="faults" class="page"><div class="grid">
+<div class="panel span-6"><h2>Injetar cenário de falha</h2><p class="muted">Selecione o tipo de evento, o ramal afetado e se a proteção daquele ramal deve atuar. Se a proteção falhar, o firmware abre R1 como retaguarda.</p>
+<div class="form-row"><label for="faultType">Tipo de falha</label><select id="faultType"><option>Raio</option><option>Curto-circuito</option><option>Sobrecarga</option><option>Falta de fase</option><option>Falha simulada genérica</option></select></div>
+<div class="form-row"><label for="network">Sub-rede afetada</label><select id="network"><option value="R2">Sub-rede R2</option><option value="R3">Sub-rede R3</option></select></div>
+<div class="form-row"><label for="protection">Proteção do ramal</label><select id="protection"><option value="true">Funciona normalmente</option><option value="false">Falha ao atuar (backup R1)</option></select></div>
+<button class="danger" onclick="simulate()">Executar cenário</button>
+</div>
+<div class="panel span-6"><h2>Comandos manuais</h2><p class="muted">Para demonstração e teste individual. R1 aberto interrompe os dois ramais.</p>
+<div class="controls"><button onclick="send({cmd:'set_relay',relay:'R1',closed:false})">Abrir R1</button><button class="primary" onclick="send({cmd:'set_relay',relay:'R1',closed:true})">Fechar R1</button><button onclick="send({cmd:'set_relay',relay:'R2',closed:false})">Abrir R2</button><button class="primary" onclick="send({cmd:'set_relay',relay:'R2',closed:true})">Fechar R2</button><button onclick="send({cmd:'set_relay',relay:'R3',closed:false})">Abrir R3</button><button class="primary" onclick="send({cmd:'set_relay',relay:'R3',closed:true})">Fechar R3</button></div>
+<div class="notice small">Os comandos manuais servem para testes. Use os cenários de falha para registrar a causa e a atuação de retaguarda.</div></div>
+</div></section>
+<section id="reports" class="page"><div class="grid">
+<div class="panel span-12"><h2>Relatórios de continuidade e eventos</h2><div class="form-row"><label>Período</label><select id="period" onchange="loadReports()"><option value="24h">Últimas 24 horas</option><option value="30d">Últimos 30 dias</option><option value="1y">Último ano</option></select><button onclick="loadReports()">Atualizar</button><button onclick="exportCsv()">Exportar eventos CSV</button></div>
+<div id="metricsReport" class="grid"></div></div>
+<div class="panel span-12"><h2>Registro cronológico de eventos</h2><div class="table-wrap"><table><thead><tr><th>Data/hora</th><th>Evento</th><th>Relé contabilizado</th><th>Motivo</th><th>Duração (s)</th></tr></thead><tbody id="eventRows"><tr><td colspan="5" class="muted">Carregando…</td></tr></tbody></table></div></div>
+<div class="panel span-12"><h2>Conformidade de tensão (estimativa didática)</h2><p class="muted">DRP/DRC regulatórios usam medições RMS, faixas dependentes da tensão nominal e janela de apuração definida no PRODIST. A onda instantânea de ±14 V, por si só, não permite classificar a conformidade real. Nesta versão, estes cartões são reservados para o cálculo calibrado futuro.</p></div>
+</div></section>
+</main>
+<script>
+let latestEvents=[], lastStatus={};
+const ctx=document.getElementById('waveChart');
+const chart=new Chart(ctx,{type:'line',data:{labels:[],datasets:[{label:'Tensão (V)',data:[],borderColor:'#28d7a0',borderWidth:2,pointRadius:0,tension:0,fill:false}]},options:{animation:false,responsive:true,plugins:{legend:{labels:{color:'#8fa2bd'}}},scales:{x:{display:false},y:{ticks:{color:'#8fa2bd'},grid:{color:'#26364d'},title:{display:true,text:'V',color:'#8fa2bd'}}}}});
+function showPage(id){document.querySelectorAll('.page').forEach(p=>p.classList.toggle('active',p.id===id));if(id==='reports')loadReports()}
+async function send(data){try{let r=await fetch('/api/command',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(data)});let j=await r.json();if(!j.ok)alert(j.error||'Não foi possível enviar o comando');}catch(e){alert('Backend indisponível. Verifique se backend.py está em execução.')} }
+function simulate(){send({cmd:'simulate_fault',fault_type:document.getElementById('faultType').value,network:document.getElementById('network').value,protection_works:document.getElementById('protection').value==='true'})}
+function setRelay(id,closed){let el=document.getElementById('svg'+id);el.classList.toggle('on',closed);el.classList.toggle('off',!closed);document.getElementById(id.toLowerCase()+'txt').textContent=closed?'FECHADO':'ABERTO'}
+function setWire(id,live){document.getElementById(id).classList.toggle('live',live)}
+async function refresh(){try{
+let r=await fetch('/api/status');let j=await r.json();let s=j.status||{};if(j.connected_data){lastStatus=s;document.getElementById('connection').textContent='● ESP32 conectado (telemetria recebida)';document.getElementById('connection').style.color='var(--green)';document.getElementById('updated').textContent=j.received_at||'—';
+setRelay('R1',!!s.r1_closed);setRelay('R2',!!s.r2_closed);setRelay('R3',!!s.r3_closed);
+setWire('wire0',!!s.r1_closed);setWire('wire1',!!s.r1_closed);setWire('wire2',!!s.r1_closed);setWire('wire3',!!s.r1_closed&&!!s.r2_closed);setWire('wire4',!!s.r1_closed&&!!s.r3_closed);
+document.querySelectorAll('#houses2 .home').forEach(x=>x.classList.toggle('lit',!!s.r1_closed&&!!s.r2_closed));document.querySelectorAll('#houses3 .home').forEach(x=>x.classList.toggle('lit',!!s.r1_closed&&!!s.r3_closed));
+document.getElementById('systemState').textContent=s.r1_closed?'OPERACIONAL':'PROTEGIDO';document.getElementById('relayList').innerHTML=['R1','R2','R3'].map(k=>`<p><span class="dot ${s[k.toLowerCase()+'_closed']?'good':'bad'}"></span><b>${k}</b> — ${s[k.toLowerCase()+'_closed']?'Fechado':'Aberto'}</p>`).join('');
+}else{document.getElementById('connection').textContent='● Aguardando dados do ESP32';}
+let w=await (await fetch('/api/wave')).json();if(w.samples){chart.data.labels=w.samples.map((_,i)=>i);chart.data.datasets[0].data=w.samples;chart.update('none')}
+let m=await (await fetch('/api/metrics?period=24h')).json();document.getElementById('interruptions').textContent=Object.values(m.by_relay||{}).reduce((a,x)=>a+x.interruptions,0);
+}catch(e){document.getElementById('connection').textContent='● Backend indisponível'}}
+async function loadReports(){let period=document.getElementById('period').value;let [er,mr]=await Promise.all([fetch('/api/events?period='+period).then(r=>r.json()),fetch('/api/metrics?period='+period).then(r=>r.json())]);latestEvents=er;
+document.getElementById('eventRows').innerHTML=er.length?er.map(e=>`<tr><td>${e.ts}</td><td>${e.event||''}</td><td>${e.relay||''}</td><td>${e.reason||''}</td><td>${((e.duration_ms||0)/1000).toFixed(2)}</td></tr>`).join(''):'<tr><td colspan="5" class="muted">Nenhum evento no período.</td></tr>';
+document.getElementById('metricsReport').innerHTML=Object.entries(mr.by_relay||{}).map(([k,v])=>`<div class="panel span-4"><h3>${k}</h3><div class="metric">${v.interruptions}</div><div class="muted small">acionamentos contabilizados</div><p>Duração total: ${v.interruption_hours_total.toFixed(5)} h</p><p>DEC demonstrativo: ${v.dec_hours_per_consumer_demo.toFixed(5)} h/UC</p><p>FEC demonstrativo: ${v.fec_interruptions_per_consumer_demo.toFixed(3)} interrupções/UC</p></div>`).join('');
+}
+function exportCsv(){let rows=[['data_hora','evento','rele','motivo','duracao_ms'],...latestEvents.map(e=>[e.ts,e.event,e.relay,e.reason,e.duration_ms])];let csv=rows.map(r=>r.map(v=>'"'+String(v??'').replaceAll('"','""')+'"').join(';')).join('\r\n');let a=document.createElement('a');a.href=URL.createObjectURL(new Blob(['\ufeff'+csv],{type:'text/csv;charset=utf-8;'}));a.download='relatorio_qee.csv';a.click();URL.revokeObjectURL(a.href)}
+refresh();loadReports();setInterval(refresh,1000);setInterval(()=>{if(document.getElementById('reports').classList.contains('active'))loadReports()},10000);
+</script>
+</body></html>
