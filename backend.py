@@ -9,11 +9,19 @@ from flask import Flask, jsonify, request, send_from_directory
 import paho.mqtt.client as mqtt
 
 DB = "qee_history.sqlite3"
-MQTT_HOST = "10.99.204.20"
+MQTT_HOST = "127.0.0.1"
 MQTT_PORT = 1883
 DEVICE_TOPIC = "qee/esp32-qee-01/#"
 app = Flask(__name__, static_folder="web", static_url_path="")
 db_lock = threading.Lock()
+fator = 1.0  # fator de escala para amostras de onda (ex.: 0.001 para mV)
+tipo_falha_onda = None
+FATORES_FALHA = {
+    "raio": 3.0,
+    "sobretensão": 1.2,
+    "curto-circuito": 0.1,
+    "sobrecarga": 0.7,
+}
 
 def connect_db():
     con = sqlite3.connect(DB, check_same_thread=False)
@@ -51,8 +59,17 @@ def on_message(client, userdata, msg):
         elif msg.topic.endswith("/status"):
             db.execute("INSERT INTO status(ts,payload) VALUES(?,?)", (ts, json.dumps(data)))
         elif msg.topic.endswith("/wave"):
+            raw_samples = data.get("samples", [])
+            if tipo_falha_onda == "raio":
+                pulse_samples = (len(raw_samples) + 19) // 20
+                samples = [
+                    sample * fator if index < pulse_samples else sample
+                    for index, sample in enumerate(raw_samples)
+                ]
+            else:
+                samples = [sample * fator for sample in raw_samples]
             db.execute("INSERT INTO wave(ts,samples,sample_rate_hz) VALUES(?,?,?)",
-                       (ts, json.dumps(data.get("samples", [])), data.get("sample_rate_hz", 0)))
+                       (ts, json.dumps(samples), data.get("sample_rate_hz", 0)))
         db.commit()
 
 mqtt_client = mqtt.Client(mqtt.CallbackAPIVersion.VERSION2, client_id="qee-backend")
@@ -120,11 +137,21 @@ def get_wave():
 
 @app.post("/api/command")
 def command():
+    global fator, tipo_falha_onda
     data = request.get_json(force=True)
     if not mqtt_client.is_connected():
         return jsonify({"ok":False,"error":"Backend não conectado ao broker MQTT"}), 503
     info = mqtt_client.publish("qee/esp32-qee-01/cmd", json.dumps(data), qos=0)
-    return jsonify({"ok": info.rc == mqtt.MQTT_ERR_SUCCESS})
+    sent = info.rc == mqtt.MQTT_ERR_SUCCESS
+    if sent and data.get("cmd") == "simulate_fault":
+        with db_lock:
+            tipo_falha_onda = data.get("fault_type")
+            fator = FATORES_FALHA.get(tipo_falha_onda, 1.0)
+    elif sent and data.get("cmd") in ("restore_all", "reset_fail_injection"):
+        with db_lock:
+            tipo_falha_onda = None
+            fator = 1.0
+    return jsonify({"ok": sent})
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5000, debug=False)

@@ -14,9 +14,9 @@
 #include <ArduinoJson.h>
 #include <math.h>
 
-const char* WIFI_SSID = "hume";
-const char* WIFI_PASS = "hashtag#29";
-const char* MQTT_HOST = "10.99.204.20"; // IP do computador com Mosquitto
+const char* WIFI_SSID = "";
+const char* WIFI_PASS = "";
+const char* MQTT_HOST = ""; // IP do computador com Mosquitto
 const uint16_t MQTT_PORT = 1883;
 const char* DEVICE_ID = "esp32-qee-01";
 

@@ -37,6 +37,7 @@ Confirme o pinout da placa e o tipo de acionamento dos módulos. Muitos módulos
 - **Nunca conecte tensão CA da rede elétrica diretamente ao ESP32.** Use fonte isolada de baixa tensão, divisor/condicionador com proteção apropriada e, para medições isoladas, um sensor adequado. A entrada ADC aceita apenas faixa positiva dentro dos limites do chip; uma senoide bipolar precisa de offset e condicionamento.
 - Os parâmetros `ADC_COUNTS_PER_VOLT_INPUT`, `ADC_OFFSET_COUNTS` e `VOLTAGE_SCALE` são exemplos e precisam ser calibrados. O sketch não é instrumento de medição certificado.
 - O código de onda usa amostragem didática de aproximadamente 1 kHz. Para análise metrológica/qualidade de energia, aumente a taxa, use aquisição adequada, calcule RMS por janelas e valide o condicionamento.
+- Na simulação, as amostras da onda são ajustadas por tipo de falha: sobrecarga (0,9x), sobretensão (1,2x), curto-circuito (0,1x) e raio (pico de 3x nos 5% iniciais de cada lote). Esses fatores são ilustrativos, não representam calibração elétrica real, e permanecem ativos até restaurar ou reiniciar a injeção de falha.
 - A lógica assume `true/closed` como relé fechado. Confirme se o seu hardware está usando relé como contato normalmente aberto e ajuste a lógica de acordo com o circuito real.
 - Para falha de atuação simulada, o evento contabilizado como trip é R1, como solicitado. O backend mantém os eventos de R1/R2/R3.
 - O backend grava os dados no arquivo `qee_history.sqlite3` no diretório de execução.
