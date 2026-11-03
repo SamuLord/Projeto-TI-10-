@@ -1,0 +1,412 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Supervisório QEE</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<style>
+:root{--wine:#320000;--brown:#5D2417;--copper:#8D4925;--terra:#C57D56;--sand:#E5D2C4;--bg:#FAF7F4;--white:#fff;--green:#2A831B;--green-l:#459B33;--text:#39241D;--muted:#8B776E;--line:#EADDD3;--amber:#E0A030;--red:#B3382C}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);font:14px/1.5 Inter,ui-sans-serif,system-ui,"Segoe UI",sans-serif}
+button,input,select{font:inherit}button{cursor:pointer}
+.top{display:flex;align-items:center;gap:24px;padding:14px clamp(16px,3vw,40px);background:var(--white);border-bottom:1px solid var(--line);position:sticky;top:0;z-index:5}
+.brand{font-weight:800;font-size:17px;color:var(--wine);letter-spacing:-.4px}
+.tabs{display:flex;gap:4px;margin-right:auto}
+.tabs button{border:0;background:none;padding:9px 16px;border-radius:10px;color:#806B61;font-weight:700}
+.tabs button.on{background:#F6E8DE;color:var(--brown)}
+.pill{display:flex;align-items:center;gap:8px;padding:7px 13px;border:1px solid var(--line);border-radius:30px;font-size:12px;font-weight:700;color:#71574A}
+.dot{width:9px;height:9px;border-radius:50%;background:var(--terra)}
+.pill.ok .dot{background:var(--green-l);box-shadow:0 0 0 4px #E2F2DE}
+main{max-width:1400px;margin:0 auto;padding:24px clamp(16px,3vw,40px) 48px}
+.page{display:none}.page.on{display:block}
+.ops{display:grid;grid-template-columns:minmax(0,1.7fr) minmax(300px,.9fr);gap:20px;margin-bottom:20px}
+.panel{background:var(--white);border:1px solid #F0E5DD;border-radius:18px;padding:22px;min-width:0}
+.ph{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;margin-bottom:16px}
+h2{margin:0;font-size:16px;color:var(--wine);letter-spacing:-.2px}
+.sub{margin:3px 0 0;color:var(--muted);font-size:12px}
+.diagram{background:#FFFCFA;border:1px solid #F1E7E0;border-radius:14px;padding:6px}
+svg{display:block;width:100%;height:auto}
+.w{fill:none;stroke:#CDB9AC;stroke-width:4;stroke-linecap:round}
+.w.live{stroke:var(--green-l)}.w.flt{stroke:var(--terra);stroke-dasharray:7 6}
+.rl{fill:#fff;stroke:#D8C5B8;stroke-width:2}
+.rl.closed{fill:#E9F5E5;stroke:var(--green-l)}.rl.open{fill:#FFE9DA;stroke:var(--copper)}
+.t{fill:#5D4032;font-size:13px;font-weight:800}.c{fill:#9A867B;font-size:11px}.c.hot{fill:var(--copper);font-weight:700}
+.legend{display:flex;gap:18px;flex-wrap:wrap;margin-top:12px;font-size:11px;color:#806B61}
+.legend i{display:inline-block;width:20px;height:4px;border-radius:3px;vertical-align:middle;margin-right:6px;background:#CDB9AC}
+.legend i.g{background:var(--green-l)}.legend i.f{background:var(--terra)}
+.lbl{display:block;margin:0 0 8px;font-size:12px;font-weight:800;color:var(--brown)}
+.sec{margin-bottom:18px}
+.chips{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.seg{display:grid;grid-auto-flow:column;grid-auto-columns:1fr;gap:6px}
+.opt{padding:10px 8px;background:#FFFCFA;border:1px solid #EEDFD5;border-radius:11px;color:#755D50;font-size:12px;font-weight:700;text-align:center}
+.opt:hover{border-color:var(--terra)}
+.opt.sel{background:#FFF0E7;border-color:var(--terra);color:var(--brown);box-shadow:inset 0 0 0 1px var(--terra)}
+.opt.sel.bad{background:#FBE7E3;border-color:var(--red);box-shadow:inset 0 0 0 1px var(--red);color:var(--red)}
+.locked{opacity:.55;pointer-events:none}
+.outcome{padding:12px 14px;background:#F5FAF2;border:1px solid #DDEBD7;border-radius:12px;color:#34732C;font-size:12px;margin-bottom:16px}
+.outcome.bad{background:#FFF4EC;border-color:#F0D8C6;color:#995023}
+.go{width:100%;min-height:50px;border:0;border-radius:13px;background:var(--brown);color:#fff;font-weight:800;font-size:14px}
+.go:hover{background:var(--wine)}.go.stop{background:var(--red)}
+.timer{display:none;margin-bottom:12px;text-align:center}
+.timer b{display:block;font-size:34px;font-variant-numeric:tabular-nums;color:var(--red);letter-spacing:-1px;line-height:1.1}
+.timer span{font-size:11px;color:var(--muted)}
+.rms{display:flex;align-items:center;gap:10px}
+.rms b{font-size:22px;color:var(--wine);font-variant-numeric:tabular-nums}
+.badge{padding:4px 10px;border-radius:20px;font-size:11px;font-weight:800;background:#EAF5E6;color:#32772A}
+.badge.p{background:#FFF1D6;color:#9A6400}.badge.c{background:#FBE7E3;color:var(--red)}.badge.n{background:#F3EBE5;color:#8C7669}
+.chart{height:230px;position:relative}
+.bar{display:flex;gap:14px;flex-wrap:wrap;align-items:flex-end;margin-bottom:18px}
+.bar label{font-size:11px;font-weight:700;color:var(--muted);display:block;margin-bottom:4px}
+.f{padding:8px 11px;border:1px solid #E8D9CE;border-radius:10px;background:#fff;color:var(--text);min-height:38px}
+.f.n{width:90px}
+.btn{padding:9px 15px;border:0;border-radius:10px;background:#F6E8DE;color:var(--brown);font-weight:800;font-size:12px;min-height:38px}
+.btn:hover{background:#EED7C7}
+.kpis{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px;margin-bottom:20px}
+.kpi{background:#fff;border:1px solid #F0E5DD;border-radius:16px;padding:18px}
+.kpi small{color:var(--muted);font-weight:700;font-size:12px}
+.kpi strong{display:block;margin:8px 0 4px;font-size:30px;color:var(--wine);letter-spacing:-1px;font-variant-numeric:tabular-nums;line-height:1.1}
+.kpi em{font-style:normal;font-size:11px;color:#9A867B;display:block}
+.cols{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.5fr);gap:20px}
+.tw{overflow-x:auto}table{width:100%;border-collapse:collapse;white-space:nowrap}
+th{padding:10px 12px;background:#FBF5F0;color:#90796C;text-align:left;font-size:11px;font-weight:800}
+td{padding:11px 12px;border-bottom:1px solid #F2EAE4;font-size:12px;color:#6D5548}
+.tag{padding:3px 8px;border-radius:7px;font-size:11px;font-weight:800;background:#FFF0E4;color:#995023}.tag.ok{background:#EAF5E6;color:#32772A}
+.empty{padding:28px;text-align:center;color:#9A867B}
+.note{margin-top:14px;font-size:11px;color:#9A867B;line-height:1.6}
+.toast{position:fixed;right:22px;bottom:22px;background:var(--wine);color:#fff;padding:13px 18px;border-radius:12px;font-size:12px;opacity:0;transform:translateY(10px);transition:.25s;pointer-events:none;max-width:340px}
+.toast.show{opacity:1;transform:none}
+@media(max-width:1000px){.ops,.cols{grid-template-columns:1fr}.kpis{grid-template-columns:1fr 1fr}}
+@media(max-width:600px){.top{flex-wrap:wrap;gap:10px}.brand{width:100%}}
+</style>
+</head>
+<body>
+<header class="top">
+  <div class="brand">Supervisório QEE</div>
+  <nav class="tabs">
+    <button class="on" data-page="ops">Operação</button>
+    <button data-page="rep">Relatórios</button>
+  </nav>
+  <div class="pill" id="conn"><span class="dot"></span><span id="connTxt">Conectando…</span></div>
+</header>
+
+<main>
+<!-- OPERAÇÃO -->
+<section class="page on" id="p-ops">
+  <div class="ops">
+    <article class="panel">
+      <div class="ph"><div><h2>Diagrama unifilar</h2><p class="sub">Estado dos relés e das residências em tempo real</p></div></div>
+      <div class="diagram"><svg id="dg" viewBox="0 0 640 330" role="img" aria-label="Diagrama unifilar"></svg></div>
+      <div class="legend"><span><i class="g"></i>Energizado</span><span><i></i>Sem energia</span><span><i class="f"></i>Ramo em falha</span></div>
+    </article>
+
+    <article class="panel">
+      <div class="ph"><div><h2>Simular falha</h2><p class="sub">O tempo é medido do início ao encerramento</p></div></div>
+      <div class="sec" id="lockable">
+        <span class="lbl">Tipo de falha</span>
+        <div class="chips" id="faults">
+          <button class="opt sel" data-v="raio">Raio</button>
+          <button class="opt" data-v="sobretensão">Sobretensão</button>
+          <button class="opt" data-v="curto-circuito">Curto-circuito</button>
+          <button class="opt" data-v="sobrecarga">Sobrecarga</button>
+        </div>
+      </div>
+      <div class="sec locklike">
+        <span class="lbl">Rede afetada</span>
+        <div class="seg" id="branches">
+          <button class="opt sel" data-v="A">Ramo A</button>
+          <button class="opt" data-v="B">Ramo B</button>
+        </div>
+      </div>
+      <div class="sec locklike">
+        <span class="lbl">Proteção do ramo</span>
+        <div class="seg" id="prot">
+          <button class="opt sel" data-v="1">Atua</button>
+          <button class="opt" data-v="0">Falha ao atuar</button>
+        </div>
+      </div>
+      <div class="outcome" id="outcome"></div>
+      <div class="timer" id="timer"><b id="timerVal">00:00.0</b><span>relé desligado há</span></div>
+      <button class="go" id="go">Iniciar falha</button>
+    </article>
+  </div>
+
+  <article class="panel">
+    <div class="ph">
+      <div><h2>Forma de onda</h2><p class="sub">Última captura recebida do ESP32</p></div>
+      <div class="rms"><b id="rmsVal">--</b><span class="sub">V RMS</span><span class="badge n" id="rmsBadge">Sem leitura</span></div>
+    </div>
+    <div class="chart"><canvas id="wave"></canvas></div>
+  </article>
+</section>
+
+<!-- RELATÓRIOS -->
+<section class="page" id="p-rep">
+  <article class="panel" style="margin-bottom:20px">
+    <div class="bar">
+      <div><label>Período</label>
+        <select class="f" id="period"><option value="24h">Últimas 24 horas</option><option value="30d">Últimos 30 dias</option><option value="1y">Último ano</option></select></div>
+      <div><label>Residências no ramo A</label><input class="f n" type="number" id="na" min="1" max="5"></div>
+      <div><label>Residências no ramo B</label><input class="f n" type="number" id="nb" min="1" max="5"></div>
+      <div><label>Tensão nominal RMS (V)</label><input class="f n" type="number" id="vref" min="1" step="0.1"></div>
+      <button class="btn" id="csv" style="margin-left:auto">Exportar CSV</button>
+    </div>
+    <div class="kpis">
+      <div class="kpi"><small>DEC · duração equivalente</small><strong id="dec">--</strong><em id="decR"></em></div>
+      <div class="kpi"><small>FEC · frequência equivalente</small><strong id="fec">--</strong><em id="fecR"></em></div>
+      <div class="kpi"><small>DRP · transgressão precária</small><strong id="drp">--</strong><em id="drpN"></em></div>
+      <div class="kpi"><small>DRC · transgressão crítica</small><strong id="drc">--</strong><em id="drcN"></em></div>
+    </div>
+    <p class="note" style="margin:0">
+      <b>DEC</b> = Σ DIC ÷ Cc (horas) · <b>FEC</b> = Σ FIC ÷ Cc (interrupções) · Cc = residências dos dois ramos. R2 e R3 afetam só o próprio ramo; R1 afeta todos. O valor menor abaixo de cada indicador considera apenas interrupções ≥ 3 min (critério ANEEL).
+      <b>DRP/DRC</b> = leituras precárias ou críticas ÷ leituras válidas × 100, com a tensão RMS de cada captura comparada à nominal. Contagem acumulada neste navegador; é demonstrativa, não apuração oficial.
+      <button class="btn" id="resetConf" style="margin-left:8px;min-height:28px;padding:4px 10px">Zerar leituras</button>
+    </p>
+  </article>
+
+  <div class="cols">
+    <article class="panel">
+      <div class="ph"><div><h2>Por relé</h2><p class="sub">Acionamentos e tempo desligado</p></div></div>
+      <div class="tw"><table><thead><tr><th>Relé</th><th>Acionamentos</th><th>Tempo desligado</th></tr></thead><tbody id="byRelay"></tbody></table></div>
+    </article>
+    <article class="panel">
+      <div class="ph"><div><h2>Registro de acionamentos</h2><p class="sub">Somente aberturas e religamentos de relés</p></div>
+        <select class="f" id="fRelay"><option value="">Todos os relés</option><option>R1</option><option>R2</option><option>R3</option></select></div>
+      <div class="tw"><table><thead><tr><th>Data e hora</th><th>Relé</th><th>Evento</th><th>Motivo</th><th>Duração</th></tr></thead><tbody id="evBody"></tbody></table></div>
+    </article>
+  </div>
+</section>
+</main>
+<div class="toast" id="toast"></div>
+
+<script>
+const API={status:"/api/status",events:"/api/events",wave:"/api/wave",command:"/api/command"};
+
+/* Formato dos comandos enviados ao ESP32 (tópico qee/esp32-qee-01/cmd).
+   Ajuste aqui se o firmware espera outro formato. */
+const CMD={
+  open:s=>({cmd:"simulate_fault",network:s.branch==="A"?"R2":"R3",fault_type:s.fault,protection_works:s.ok}),
+  close:()=>({cmd:"restore_all"})
+};
+
+/* Faixas do PRODIST Módulo 8 como fração da tensão nominal (referência: tabela de 127 V).
+   Confira com a revisão vigente do módulo antes de apresentar. */
+const LIM={adqMin:10/12,adqMax:14/12,crMin:8/12,crMax:16/12};
+
+const $=id=>document.getElementById(id);
+const LS={get(k,d){try{const v=localStorage.getItem(k);return v?JSON.parse(v):d}catch{return d}},set(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch{}}};
+const cfg=Object.assign({na:2,nb:2,vref:9.9,period:"24h"},LS.get("cfg",{}));
+const conf=Object.assign({n:0,lp:0,lc:0,ts:null},LS.get("conf",{}));
+const st={r:{R1:null,R2:null,R3:null},events:[],connected:false};
+const sim={fault:"raio",branch:"A",ok:true,active:false,t0:0,relay:null};
+
+function toast(m){const t=$("toast");t.textContent=m;t.classList.add("show");clearTimeout(toast.t);toast.t=setTimeout(()=>t.classList.remove("show"),3000)}
+async function getJSON(u){const r=await fetch(u,{cache:"no-store"});if(!r.ok)throw new Error(r.status);return r.json()}
+async function send(p){const r=await fetch(API.command,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(p)});if(!r.ok)throw new Error(r.status)}
+const fmtDur=ms=>{const s=ms/1000;if(s<60)return s.toFixed(1).replace(".",",")+" s";const m=Math.floor(s/60);if(m<60)return m+" min "+Math.round(s%60)+" s";return (s/3600).toFixed(2).replace(".",",")+" h"};
+const fmtH=h=>h.toFixed(h<1?4:2).replace(".",",");
+const pct=v=>v.toFixed(1).replace(".",",")+"%";
+
+/* ---------- Navegação ---------- */
+document.querySelectorAll(".tabs button").forEach(b=>b.onclick=()=>{
+  document.querySelectorAll(".tabs button").forEach(x=>x.classList.toggle("on",x===b));
+  document.querySelectorAll(".page").forEach(p=>p.classList.toggle("on",p.id==="p-"+b.dataset.page));
+  if(b.dataset.page==="rep")loadEvents();
+});
+
+/* ---------- Diagrama ---------- */
+function house(x,y,on){
+  return `<g>${on?`<circle cx="${x+13}" cy="${y+16}" r="22" fill="#FFD27A" opacity=".28"/>`:""}
+  <path d="M${x} ${y+13}L${x+13} ${y}L${x+26} ${y+13}Z" fill="${on?"#E0A030":"#CDB9AC"}"/>
+  <rect x="${x+3}" y="${y+13}" width="20" height="17" rx="2" fill="${on?"#FFD27A":"#EFE6DF"}" stroke="${on?"#E0A030":"#CDB9AC"}" stroke-width="1.5"/></g>`;
+}
+function drawDiagram(){
+  const {R1,R2,R3}=st.r, known=R1!==null;
+  const on1=R1===true, onA=on1&&R2===true, onB=on1&&R3===true;
+  const fA=sim.active&&sim.branch==="A", fB=sim.active&&sim.branch==="B";
+  const cls=(live,flt)=>"w"+(flt?" flt":live?" live":"");
+  const rel=(x,y,n,v)=>`<rect class="rl ${v===true?"closed":v===false?"open":""}" x="${x}" y="${y}" width="62" height="36" rx="9"/>
+    <text class="t" x="${x+31}" y="${y+23}" text-anchor="middle">${n}</text>
+    <text class="c ${v===false?"hot":""}" x="${x+31}" y="${y+54}" text-anchor="middle">${v===true?"fechado":v===false?"aberto":"--"}</text>`;
+  const homes=(n,y,on)=>Array.from({length:n},(_,i)=>house(468+i*38,y-15,on)).join("");
+  const bolt=y=>`<path transform="translate(292 ${y-30})" d="M8 0L-4 18H3L-1 34L13 13H6Z" fill="#E0A030" stroke="#8D4925" stroke-width="1.2"/>`;
+  $("dg").innerHTML=`
+  <circle cx="42" cy="165" r="22" class="rl ${known?"closed":""}"/><text class="t" x="42" y="170" text-anchor="middle">V</text>
+  <text class="c" x="42" y="208" text-anchor="middle">Entrada</text>
+  <path class="${cls(known)}" d="M64 165H150"/>
+  ${rel(150,147,"R1",R1)}
+  <path class="${cls(on1)}" d="M212 165H272"/>
+  <path class="${cls(on1)}" d="M272 85V245"/>
+  <path class="${cls(on1,fA)}" d="M272 85H340"/><path class="${cls(onA,fA)}" d="M402 85H462"/>
+  ${rel(340,67,"R2",R2)}${homes(cfg.na,85,onA)}
+  <text class="c ${fA?"hot":""}" x="468" y="${85+48}">Ramo A · ${cfg.na} residências</text>
+  <path class="${cls(on1,fB)}" d="M272 245H340"/><path class="${cls(onB,fB)}" d="M402 245H462"/>
+  ${rel(340,227,"R3",R3)}${homes(cfg.nb,245,onB)}
+  <text class="c ${fB?"hot":""}" x="468" y="${245+48}">Ramo B · ${cfg.nb} residências</text>
+  ${fA?bolt(85):""}${fB?bolt(245):""}`;
+}
+
+/* ---------- Simulação ---------- */
+function relayFor(){return sim.ok?(sim.branch==="A"?"R2":"R3"):"R1"}
+function outcome(){
+  const r=relayFor(), o=$("outcome");
+  o.className="outcome"+(sim.ok?"":" bad");
+  o.textContent=sim.ok
+    ? `${r} abre e isola só o Ramo ${sim.branch}. Será registrado o acionamento de ${r}.`
+    : `R${sim.branch==="A"?2:3} falha ao atuar, então R1 abre e desliga toda a rede. Será registrado apenas R1.`;
+}
+function bindGroup(id,fn){
+  document.querySelectorAll("#"+id+" .opt").forEach(b=>b.onclick=()=>{
+    if(sim.active)return;
+    document.querySelectorAll("#"+id+" .opt").forEach(x=>x.classList.toggle("sel",x===b));
+    document.querySelectorAll("#"+id+" .opt").forEach(x=>x.classList.toggle("bad",x===b&&id==="prot"&&b.dataset.v==="0"));
+    fn(b.dataset.v);outcome();drawDiagram();
+  });
+}
+bindGroup("faults",v=>sim.fault=v);
+bindGroup("branches",v=>sim.branch=v);
+bindGroup("prot",v=>sim.ok=v==="1");
+
+function lockUI(l){document.querySelectorAll("#faults,#branches,#prot").forEach(e=>e.classList.toggle("locked",l))}
+function tick(){if(!sim.active)return;const ms=Date.now()-sim.t0;const m=Math.floor(ms/60000),s=((ms%60000)/1000).toFixed(1).padStart(4,"0");$("timerVal").textContent=String(m).padStart(2,"0")+":"+s}
+setInterval(tick,100);
+
+$("go").onclick=async()=>{
+  const b=$("go");b.disabled=true;
+  try{
+    if(!sim.active){
+      sim.relay=relayFor();
+      await send(CMD.open(sim));
+      sim.active=true;sim.t0=Date.now();
+      b.textContent="Encerrar e religar";b.classList.add("stop");$("timer").style.display="block";lockUI(true);
+    }else{
+      await send(CMD.close());
+      sim.active=false;
+      b.textContent="Iniciar falha";b.classList.remove("stop");$("timer").style.display="none";lockUI(false);
+      toast("Falha encerrada: "+sim.relay+" religado.");
+    }
+    drawDiagram();
+    setTimeout(()=>{loadStatus();loadEvents()},700);
+  }catch(e){toast("Não foi possível enviar o comando. Verifique o backend.")}
+  b.disabled=false;
+};
+
+/* ---------- Dados ---------- */
+function setConn(backend,fresh){
+  const p=$("conn");p.classList.toggle("ok",backend&&fresh);
+  $("connTxt").textContent=!backend?"Backend indisponível":fresh?"ESP32 online":"ESP32 sem dados";
+}
+async function loadStatus(){
+  try{
+    const d=await getJSON(API.status),s=d.status||{};
+    const age=d.received_at?(Date.now()-new Date(d.received_at).getTime())/1000:1e9;
+    setConn(true,age<15);
+    for(const r of["R1","R2","R3"]){
+      const v=s[r.toLowerCase()+"_closed"];
+      if(v===true||v===1||v==="1")st.r[r]=true;else if(v===false||v===0||v==="0")st.r[r]=false;
+    }
+    drawDiagram();
+  }catch{setConn(false,false)}
+}
+
+/* Mantém somente acionamentos e religamentos de relés; eventos de sistema (online/offline) são ignorados. */
+const isRelayEvent=e=>["trip","restore"].includes(e.event)&&["R1","R2","R3"].includes(e.relay);
+async function loadEvents(){
+  try{
+    const d=await getJSON(API.events+"?period="+cfg.period);
+    st.events=(Array.isArray(d)?d:[]).filter(isRelayEvent);
+    renderReports();
+  }catch{}
+}
+
+/* ---------- Onda e conformidade ---------- */
+let chart=null,lastWave=null;
+function initChart(){
+  if(typeof Chart==="undefined")return;
+  chart=new Chart($("wave"),{type:"line",data:{labels:[],datasets:[{data:[],borderColor:"#8D4925",borderWidth:2,pointRadius:0,tension:.25}]},
+    options:{responsive:true,maintainAspectRatio:false,animation:false,plugins:{legend:{display:false}},
+      scales:{x:{grid:{display:false},ticks:{maxTicksLimit:8,color:"#A18B80"},title:{display:true,text:"tempo (ms)",color:"#8A756A"}},
+              y:{min:-18,max:18,grid:{color:"#F1E8E2"},ticks:{color:"#A18B80"},title:{display:true,text:"V",color:"#8A756A"}}}}});
+}
+function classify(rms){
+  const q=rms/cfg.vref;
+  if(q<LIM.crMin||q>LIM.crMax)return"c";
+  if(q<LIM.adqMin||q>LIM.adqMax)return"p";
+  return"a";
+}
+async function loadWave(){
+  try{
+    const d=await getJSON(API.wave);
+    const s=(d.samples||[]).map(Number).filter(Number.isFinite);
+    if(!s.length)return;
+    if(chart){const fs=d.sample_rate_hz||1000;chart.data.labels=s.map((_,i)=>(i*1000/fs).toFixed(1));chart.data.datasets[0].data=s;chart.update("none")}
+    const rms=Math.sqrt(s.reduce((a,v)=>a+v*v,0)/s.length);
+    $("rmsVal").textContent=rms.toFixed(2).replace(".",",");
+    const k=classify(rms),b=$("rmsBadge");
+    b.className="badge "+(k==="a"?"":k);b.textContent=k==="a"?"Adequada":k==="p"?"Precária":"Crítica";
+    if(d.ts&&d.ts!==lastWave){
+      lastWave=d.ts;
+      if(d.ts!==conf.ts){conf.ts=d.ts;conf.n++;if(k==="p")conf.lp++;if(k==="c")conf.lc++;LS.set("conf",conf);renderConf()}
+    }
+  }catch{}
+}
+function renderConf(){
+  const n=conf.n;
+  $("drp").textContent=n?pct(conf.lp/n*100):"--";
+  $("drc").textContent=n?pct(conf.lc/n*100):"--";
+  $("drpN").textContent=`${conf.lp} de ${n} leituras`;
+  $("drcN").textContent=`${conf.lc} de ${n} leituras`;
+}
+
+/* ---------- Relatórios ---------- */
+function renderReports(){
+  const {na,nb}=cfg,cc=na+nb,aff={R1:cc,R2:na,R3:nb};
+  let dic=0,fic=0,dicR=0,ficR=0;
+  const per={R1:{n:0,ms:0},R2:{n:0,ms:0},R3:{n:0,ms:0}};
+  for(const e of st.events){
+    const a=aff[e.relay];
+    if(e.event==="trip"){fic+=a;per[e.relay].n++}
+    else{
+      const ms=e.duration_ms||0;
+      dic+=ms/3600000*a;per[e.relay].ms+=ms;
+      if(ms>=180000){dicR+=ms/3600000*a;ficR+=a}
+    }
+  }
+  $("dec").textContent=fmtH(dic/cc)+" h";
+  $("decR").textContent="≥ 3 min: "+fmtH(dicR/cc)+" h";
+  $("fec").textContent=(fic/cc).toFixed(2).replace(".",",");
+  $("fecR").textContent="≥ 3 min: "+(ficR/cc).toFixed(2).replace(".",",");
+  renderConf();
+  $("byRelay").innerHTML=["R1","R2","R3"].map(r=>`<tr><td><b>${r}</b></td><td>${per[r].n}</td><td>${per[r].ms?fmtDur(per[r].ms):"—"}</td></tr>`).join("");
+  const f=$("fRelay").value,rows=st.events.filter(e=>!f||e.relay===f).slice(0,200);
+  $("evBody").innerHTML=rows.length?rows.map(e=>`<tr><td>${new Date(e.ts).toLocaleString("pt-BR")}</td><td><b>${e.relay}</b></td>
+    <td><span class="tag ${e.event==="restore"?"ok":""}">${e.event==="trip"?"Acionado":"Religado"}</span></td>
+    <td>${esc(e.reason||"—")}</td><td>${e.event==="restore"?fmtDur(e.duration_ms||0):"—"}</td></tr>`).join("")
+    :`<tr><td colspan="5" class="empty">Nenhum acionamento no período.</td></tr>`;
+}
+const esc=v=>String(v).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"})[c]);
+
+function bindCfg(){
+  $("period").value=cfg.period;$("na").value=cfg.na;$("nb").value=cfg.nb;$("vref").value=cfg.vref;
+  const save=()=>{
+    cfg.na=Math.min(5,Math.max(1,+$("na").value||1));cfg.nb=Math.min(5,Math.max(1,+$("nb").value||1));
+    cfg.vref=+$("vref").value>0?+$("vref").value:9.9;cfg.period=$("period").value;
+    LS.set("cfg",cfg);drawDiagram();loadEvents();renderReports();
+  };
+  ["period","na","nb","vref"].forEach(i=>$(i).onchange=save);
+  $("fRelay").onchange=renderReports;
+  $("resetConf").onclick=()=>{if(confirm("Zerar as leituras acumuladas de DRP e DRC?")){Object.assign(conf,{n:0,lp:0,lc:0,ts:null});LS.set("conf",conf);renderConf()}};
+  $("csv").onclick=()=>{
+    if(!st.events.length)return toast("Não há dados para exportar.");
+    const rows=[["Data e hora","Relé","Evento","Motivo","Duração (ms)"],...st.events.map(e=>[e.ts,e.relay,e.event==="trip"?"Acionado":"Religado",e.reason||"",e.duration_ms||0])];
+    const csv="\uFEFF"+rows.map(r=>r.map(v=>`"${String(v).replace(/"/g,'""')}"`).join(";")).join("\r\n");
+    const a=document.createElement("a");a.href=URL.createObjectURL(new Blob([csv],{type:"text/csv;charset=utf-8"}));a.download="acionamentos.csv";a.click();
+  };
+}
+
+bindCfg();initChart();outcome();drawDiagram();renderConf();
+loadStatus();loadEvents();loadWave();
+setInterval(loadStatus,2000);setInterval(loadWave,1500);setInterval(loadEvents,5000);
+</script>
+</body>
+</html>

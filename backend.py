@@ -9,7 +9,7 @@ from flask import Flask, jsonify, request, send_from_directory
 import paho.mqtt.client as mqtt
 
 DB = "qee_history.sqlite3"
-MQTT_HOST = "127.0.0.1"
+MQTT_HOST = "10.99.204.20"
 MQTT_PORT = 1883
 DEVICE_TOPIC = "qee/esp32-qee-01/#"
 app = Flask(__name__, static_folder="web", static_url_path="")

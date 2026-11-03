@@ -14,9 +14,9 @@
 #include <ArduinoJson.h>
 #include <math.h>
 
-const char* WIFI_SSID = "SEU_WIFI";
-const char* WIFI_PASS = "SUA_SENHA";
-const char* MQTT_HOST = "192.168.1.100"; // IP do computador com Mosquitto
+const char* WIFI_SSID = "hume";
+const char* WIFI_PASS = "hashtag#29";
+const char* MQTT_HOST = "10.99.204.20"; // IP do computador com Mosquitto
 const uint16_t MQTT_PORT = 1883;
 const char* DEVICE_ID = "esp32-qee-01";
 
@@ -31,12 +31,13 @@ const int RELAY_OFF = HIGH;
 
 // Calibração didática: Vmedido = (ADC - offset) * voltsPorContagem.
 // Ajuste com multímetro e circuito condicionador. Não é calibração metrológica.
-const float ADC_COUNTS_PER_VOLT_INPUT = 250.0f; // EXEMPLO: counts por volt real, ajustar
-const float ADC_OFFSET_COUNTS = 2048.0f;        // sinal AC centrado em meia escala
-const float VOLTAGE_SCALE = 1.0f;               // escala do condicionador, ajustar
 const uint32_t SAMPLE_PERIOD_US = 1000;         // 1 kHz para visualização didática
 const uint32_t WAVE_PUBLISH_MS = 100;           // lote curto de amostras para gráfico
 const int WAVE_BATCH = 20;
+
+const float ADC_OFFSET_COUNTS = 861.24f;
+const float ADC_COUNTS_PER_VOLT_INPUT = 38.39f;
+const float VOLTAGE_SCALE = 1.0f;
 
 WiFiClient wifiClient;
 PubSubClient mqtt(wifiClient);
@@ -233,6 +234,10 @@ void connectMqtt() {
     publishStatus();
     publishEvent("online", "ESP32", "conectado ao broker", 0);
   }
+  if (!mqtt.connected()) {
+    Serial.print("Falha MQTT. Codigo: ");
+    Serial.println(mqtt.state());
+  }
 }
 
 void voltageTask(void* parameter) {
@@ -272,9 +277,28 @@ void setup() {
   analogReadResolution(12);
   analogSetPinAttenuation(PIN_VOLTAGE, ADC_11db);
 
-  WiFi.mode(WIFI_STA);
+  //WiFi.mode(WIFI_STA);
   WiFi.begin(WIFI_SSID, WIFI_PASS);
-  while (WiFi.status() != WL_CONNECTED) delay(300);
+  int tentativas = 0;
+
+  while (WiFi.status() != WL_CONNECTED && tentativas < 100) {
+    delay(500);
+    Serial.print(".");
+    tentativas++;
+  }
+
+  if (WiFi.status() == WL_CONNECTED) {
+    Serial.println("\nWi-Fi conectado!");
+    Serial.print("IP do ESP32: ");
+    Serial.println(WiFi.localIP());
+
+    Serial.print("Intensidade do sinal (RSSI): ");
+    Serial.println(WiFi.RSSI());
+  } else {
+    Serial.println("\nFalha ao conectar no Wi-Fi.");
+    Serial.print("Codigo WiFi.status(): ");
+    Serial.println(WiFi.status());
+  }
 
   mqtt.setServer(MQTT_HOST, MQTT_PORT);
   mqtt.setCallback(mqttCallback);
